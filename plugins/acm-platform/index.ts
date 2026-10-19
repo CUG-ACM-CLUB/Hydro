@@ -10,8 +10,10 @@ class PlatformBridge extends Handler {
     async prepare() {
         const expected = process.env.BRIDGE_SECRET || '';
         const provided = String(this.request.headers['x-platform-secret'] || '');
-        if (expected.length < 32 || provided.length !== expected.length
-            || !timingSafeEqual(Buffer.from(expected), Buffer.from(provided))) {
+        const expectedBytes = Buffer.from(expected);
+        const providedBytes = Buffer.from(provided);
+        if (expectedBytes.length < 32 || providedBytes.length !== expectedBytes.length
+            || !timingSafeEqual(expectedBytes, providedBytes)) {
             throw new ForbiddenError();
         }
     }
@@ -26,7 +28,8 @@ class PlatformBridge extends Handler {
             await this.limitRate('platform_login', 60, 10, uname);
             const user = await UserModel.getByUname('system', uname);
             // Do not silently bypass two-factor authentication.
-            if (!user || user.tfa || user.authn || !user.hasPriv(PRIV.PRIV_USER_PROFILE)) throw new ForbiddenError();
+            if (!user || user.tfa || user.authn || !user.hasPriv(PRIV.PRIV_USER_PROFILE)
+                || !user.hasPerm(PERM.PERM_VIEW) || !user.hasPerm(PERM.PERM_VIEW_PROBLEM)) throw new ForbiddenError();
             await user.checkPassword(password);
             this.response.body = { uid: user._id, username: user.uname, admin: user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) };
             return;
@@ -35,11 +38,11 @@ class PlatformBridge extends Handler {
         if (!Number.isSafeInteger(input.uid) || input.uid <= 0) throw new ForbiddenError();
         const user = await UserModel.getById('system', input.uid);
         if (!user.hasPriv(PRIV.PRIV_USER_PROFILE)) throw new ForbiddenError();
+        if (!user.hasPerm(PERM.PERM_VIEW) || !user.hasPerm(PERM.PERM_VIEW_PROBLEM)) throw new ForbiddenError();
         if (input.action === 'identity') {
             this.response.body = { uid: user._id, username: user.uname, admin: user.hasPriv(PRIV.PRIV_EDIT_SYSTEM) };
             return;
         }
-        if (!user.hasPerm(PERM.PERM_VIEW) || !user.hasPerm(PERM.PERM_VIEW_PROBLEM)) throw new ForbiddenError();
         if (input.action === 'problems') {
             const problems = await ProblemModel.getMulti('system', { hidden: false })
                 .project({ docId: 1, title: 1, content: 1, tag: 1, difficulty: 1 })
