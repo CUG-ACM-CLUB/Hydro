@@ -49,7 +49,8 @@ packages/ui-default/public
 packages/ui-default/misc/.iconfont
 packages/ui-default/static/locale
 packages/ui-next/public
-/plugins/
+/plugins/*
+!/plugins/acm-platform/
 /modules/
 
 # Data files
@@ -67,3 +68,6 @@ __*
 
 packages/*/public/assets
 node_modules.*
+
+# Pin the platform build's exact dependency resolution.
+!yarn.lock
