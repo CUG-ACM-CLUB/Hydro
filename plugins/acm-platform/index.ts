@@ -78,6 +78,8 @@ class PlatformBridge extends Handler {
                 rid: record._id.toHexString(), uid: record.uid, pid: record.pid,
                 status: record.status, score: record.score, time: record.time, memory: record.memory,
                 created_at: record._id.getTimestamp().toISOString(),
+                ...(input.include_code === true && typeof record.code === 'string'
+                    && Buffer.byteLength(record.code, 'utf8') <= 128 * 1024 ? { code: record.code } : {}),
             };
             return;
         }
