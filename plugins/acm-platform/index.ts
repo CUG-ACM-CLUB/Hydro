@@ -6,6 +6,8 @@ import {
 
 class PlatformBridge extends Handler {
     noCheckPermView = true;
+    // Internal API traffic has its own quota, separate from public visitors.
+    notUsage = true;
 
     async prepare() {
         const expected = process.env.BRIDGE_SECRET || '';
@@ -14,8 +16,10 @@ class PlatformBridge extends Handler {
         const providedBytes = Buffer.from(provided);
         if (expectedBytes.length < 32 || providedBytes.length !== expectedBytes.length
             || !timingSafeEqual(expectedBytes, providedBytes)) {
+            await this.limitRate('platform_bridge_invalid', 60, 10);
             throw new ForbiddenError();
         }
+        await this.limitRate('platform_bridge', 5, 500);
     }
 
     async post() {
